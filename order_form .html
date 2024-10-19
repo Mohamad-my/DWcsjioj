@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Form</title>
+    <link rel="website icon" type="png" href="img/4660619.png">
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+   
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin-top: 50px;
+        }
+        .form-control:invalid {
+            border-color: #dc3545;
+        }
+        .form-control:valid {
+            border-color: #28a745;
+        }
+        .invalid-feedback {
+            display: none;
+        }
+        .is-invalid .invalid-feedback {
+            display: block;
+        }
+        .total-price {
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="my-4 text-center">Order Form</h1>
+        <form id="orderForm">
+            <div class="form-group">
+                <div id="datetime"></div><br><br>
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" class="form-control" required>
+                    <div class="invalid-feedback">Please enter a valid name.</div>
+                </div>
+            <div class="form-group">
+                <label for="address">Delivery Address</label>
+                <input type="text" id="address" name="address" class="form-control" required>
+                <div class="invalid-feedback">Please enter a delivery address.</div>
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" class="form-control" required pattern="^\00962[0-9]{7,9}$" placeholder="009627XXXXXXXX">
+                <div class="invalid-feedback">Please enter a valid phone number starting with +962 followed by 7 to 9 digits.</div>
+            </div>
+            <div class="form-group">
+                <label for="city">City</label>
+                <select id="city" name="city" class="form-control" required>
+                    <option value="">Select a city</option>
+                    <option value="Amman">Amman</option>
+                    <option value="Irbid">Irbid</option>
+                    <option value="Zarqa">Zarqa</option>
+                    <option value="Karak">Karak</option>
+                </select>
+                <div class="invalid-feedback">Please select a city.</div>
+            </div>
+            <div id="cartItems" class="mt-4"></div>
+            <div class="total-price" id="totalPrice">
+                Total Price: $0
+            </div>
+            <button type="submit" class="btn btn-primary btn-block mt-4">Submit Order</button>
+        </form>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- Include EmailJS -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script>
+ document.addEventListener('DOMContentLoaded', function() {
+    emailjs.init('iU3wsSh-LRpib6Cuj'); // تهيئة EmailJS
+
+    const form = document.getElementById('orderForm');
+    const totalPriceElement = document.getElementById('totalPrice');
+    const cartItemsElement = document.getElementById('cartItems');
+
+    // استعادة عناصر السلة من localStorage
+    // استعادة عناصر السلة من localStorage
+function getCartItems() {
+    const cartItems = localStorage.getItem('cartItems');
+    const items = cartItems ? JSON.parse(cartItems) : [];
+    console.log('Retrieved cartItems from localStorage:', items); // تحقق من العناصر المسترجعة
+    return items;
+}
+
+
+    // تعديل السعر حسب المدينة (قيمة التوصيل)
+    function getCityAdjustment(city) {
+        switch (city) {
+            case 'Amman': return 2;  // قيمة التوصيل لعمان
+            case 'Irbid': return 4;  // قيمة التوصيل لإربد
+            case 'Zarqa': return 3;  // قيمة التوصيل للزرقاء
+            case 'Karak': return 5;  // قيمة التوصيل للكرك
+            default: return 0;       // إذا لم يتم اختيار مدينة
+        }
+    }
+
+    // عرض عناصر السلة وحساب التكلفة الإجمالية
+    // عرض عناصر السلة وحساب التكلفة الإجمالية
+function displayCartItems(cart) {
+    cartItemsElement.innerHTML = ''; // تفريغ المحتوى الحالي للسلة
+
+    if (cart.length === 0) {
+        cartItemsElement.innerHTML = '<p>Your cart is empty.</p>'; // رسالة عند عدم وجود منتجات
+        return 0;
+    }
+
+    cart.forEach(item => {
+        console.log('Displaying item:', item); // تحقق من العناصر المعروضة
+        const itemHTML = `<li>${item.name} - ${item.price} JD (x${item.quantity})</li>`;
+        cartItemsElement.innerHTML += itemHTML; // عرض المنتجات داخل السلة
+    });
+
+    // حساب القيمة الكلية للمنتجات
+    let totalCost = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    console.log('Total cost of cart items:', totalCost); // رسالة توضيحية لحساب التكلفة الكلية
+    return totalCost; // إرجاع المجموع الكلي للمنتجات فقط (بدون التوصيل)
+}
+
+
+    // تحديث السعر الإجمالي (يشمل التوصيل)
+    function updateTotalPrice(totalCost, city) {
+        const deliveryCost = getCityAdjustment(city); // حساب قيمة التوصيل
+        const totalWithDelivery = totalCost + deliveryCost; // المجموع الكلي مع التوصيل
+        totalPriceElement.textContent = `Total Price: ${totalWithDelivery} JD`; // عرض السعر الكلي
+        console.log('Total price with delivery:', totalWithDelivery); // رسالة توضيحية للسعر الكلي مع التوصيل
+        return totalWithDelivery; // إرجاع المجموع الكلي
+    }
+
+    // تحميل البيانات عند بدء التشغيل
+    const cart = getCartItems(); // استعادة العناصر من السلة
+    console.log("Cart items after retrieval:", cart); // تحقق من محتويات السلة المسترجعة
+    const cartTotal = displayCartItems(cart); // عرض المنتجات وحساب التكلفة الإجمالية
+
+    let selectedCity = form.city.value; // المدينة المختارة
+    let totalCostWithDelivery = updateTotalPrice(cartTotal, selectedCity); // تحديث السعر الكلي مع التوصيل
+
+    // تحديث السعر عند تغيير المدينة
+    form.city.addEventListener('change', function() {
+        selectedCity = form.city.value; // الحصول على المدينة الجديدة
+        totalCostWithDelivery = updateTotalPrice(cartTotal, selectedCity); // تحديث السعر الكلي
+    });
+
+    // معالجة إرسال الطلب
+    form.addEventListener('submit', function(event) {
+        event.preventDefault(); // منع الإرسال التلقائي للنموذج
+
+        if (!form.checkValidity()) {
+            alert('Please fill out all required fields.');
+            return;
+        }
+
+        const name = form.name.value;
+        const address = form.address.value;
+        const phone = form.phone.value;
+        const city = form.city.value;
+
+        const cartItems = getCartItems(); // استعادة المنتجات من السلة
+        const cartTotal = displayCartItems(cartItems); // حساب إجمالي المنتجات
+        const totalCost = updateTotalPrice(cartTotal, city); // حساب القيمة الكلية مع التوصيل
+
+        const templateParams = {
+            name: name,
+            address: address,
+            phone: phone,
+            city: city,
+            totalCost: totalCost,
+            cartItems: cartItems.map(item => `${item.name} - ${item.price} JD (x${item.quantity})`).join(', ')
+        };
+
+        // إرسال الطلب باستخدام EmailJS
+        emailjs.send('service_lwmk5lg', 'template_wbxfut2', templateParams)
+            .then(function(response) {
+                alert('Order submitted successfully!');
+                form.reset();
+                totalPriceElement.textContent = 'Total Price: 0 JD'; // إعادة تعيين السعر الكلي
+                cartItemsElement.innerHTML = ''; // تفريغ السلة
+                localStorage.removeItem('cartItems'); // حذف السلة من التخزين
+            }, function(error) {
+                alert('Failed to submit order. Please try again.');
+                console.error('Error:', error);
+            });
+    });
+});
+
+
+</script>
+        
+       
+
+</body>
+</html>
